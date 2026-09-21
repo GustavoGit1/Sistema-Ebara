@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { areaGrid } from "./storage-area";
 import { palletRackPieces } from "./storage-pallet-rack";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { indexLayout, snapPosition, footprint } from "./storage-operations";
@@ -160,6 +161,8 @@ export function createStorageScene(host, callbacks) {
     cancel();
     layout = next;
     index = indexLayout(layout);
+    updateArea();
+    grid.visible = editing || Boolean(layout.area);
     clearLabels();
     root.clear();
     groups.clear();
@@ -273,22 +276,27 @@ export function createStorageScene(host, callbacks) {
     }
     dirty = true;
   }
+  let areaKey = "";
+  function updateArea() {
+    const area = layout.area || { width: 40, depth: 40 };
+    const key = JSON.stringify([area.width, area.depth, step]);
+    if (key === areaKey) return;
+    areaKey = key;
+    scene.remove(grid);
+    grid.geometry.dispose();
+    grid.material.dispose();
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(areaGrid(area, step), 3));
+    grid = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: 0x555555 }));
+    grid.visible = editing || Boolean(layout.area);
+    scene.add(grid);
+    floor.scale.set(area.width / 1000, area.depth / 1000, 1);
+  }
   function setEditing(value, snap) {
     editing = value;
-    if (step !== snap) {
-      scene.remove(grid);
-      grid.geometry.dispose();
-      grid.material.dispose();
-      step = snap;
-      grid = new THREE.GridHelper(
-        40,
-        Math.round(40 / (step || 1)),
-        0x777777,
-        0x343434
-      );
-      scene.add(grid);
-    }
-    grid.visible = editing;
+    step = snap;
+    updateArea();
+    grid.visible = editing || Boolean(layout.area);
     dirty = true;
   }
   function focus(request = {}) {
@@ -303,7 +311,9 @@ export function createStorageScene(host, callbacks) {
         new THREE.Vector3(d.width / 2, d.height, d.depth / 2)
       ).applyMatrix4(group.matrixWorld);
     } else {
-      bounds = new THREE.Box3();
+      bounds = layout.area
+        ? new THREE.Box3(new THREE.Vector3(-layout.area.width / 2, 0, -layout.area.depth / 2), new THREE.Vector3(layout.area.width / 2, 0, layout.area.depth / 2))
+        : new THREE.Box3();
       for (const candidate of index.children.get(null) || []) {
         const d = candidate.dimensions;
         bounds.union(

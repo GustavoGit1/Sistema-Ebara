@@ -1,0 +1,52 @@
+const { chromium } = require('../.npm-cache/storage-tests/node_modules/playwright');
+const assert = require('assert/strict');
+(async () => {
+  const browser = await chromium.launch({channel:'msedge',headless:true,args:['--enable-webgl','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+  try {
+    const page = await browser.newPage({viewport:{width:1280,height:900}});
+    page.setDefaultTimeout(20000);
+    const errors=[];
+    page.on('pageerror', e=>errors.push(e.message));
+    await page.goto(process.env.STORAGE_TEST_URL || 'http://localhost:3117');
+    await page.getByRole('button',{name:'Entrar no sistema'}).click();
+    const inputs=page.locator('form input');
+    await inputs.nth(0).fill('empresa1');
+    await inputs.nth(1).fill('Chefe');
+    await inputs.nth(2).fill('123456');
+    await page.getByRole('button',{name:'Entrar',exact:true}).click();
+    await page.getByRole('button',{name:'Visualização e montagem 3D'}).click();
+    await page.getByRole('button',{name:'Editar estoque',exact:true}).click();
+    await page.getByLabel('Adicionar objeto',{exact:true}).selectOption('pallet_rack');
+    await page.getByRole('button',{name:'Escolher local na cena',exact:true}).click();
+    const canvas=page.locator('canvas').first();
+    await canvas.scrollIntoViewIfNeeded();
+    const bounds=await canvas.boundingBox();
+    await canvas.click({position:{x:bounds.width/2,y:bounds.height/2}});
+    await page.getByLabel('Largura da área (m)',{exact:true}).fill('12');
+    await page.getByLabel('Comprimento da área (m)',{exact:true}).fill('8');
+    await page.getByRole('button',{name:'Girar objeto para a esquerda',exact:true}).click();
+    await page.getByRole('button',{name:'Salvar layout',exact:true}).click();
+    await page.waitForFunction(async()=>{
+      const db=await new Promise(resolve=>{const r=indexedDB.open('storage-layouts',1);r.onsuccess=()=>resolve(r.result);});
+      const value=await new Promise(resolve=>{const r=db.transaction('layouts').objectStore('layouts').get('demo-empresa1');r.onsuccess=()=>resolve(r.result);});db.close();
+      return value?.area?.width===12 && value.area.depth===8 && Math.abs(value.objects[0].rotation.y - Math.PI/36)<1e-8;
+    });
+    await page.getByLabel('Nome do novo layout',{exact:true}).fill('Layout A');
+    await page.getByRole('button',{name:'Salvar como novo layout',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelectorAll('select option').length && [...document.querySelectorAll('select')].some(s=>s.selectedOptions[0]?.textContent==='Layout A'));
+    const id=await page.getByLabel('Escolher layout',{exact:true}).inputValue();
+    assert.ok(id);
+    await page.getByLabel('Nome do novo layout',{exact:true}).fill('Layout B');
+    await page.getByRole('button',{name:'Criar layout vazio',exact:true}).click();
+    await page.waitForFunction(()=>[...document.querySelectorAll('select')].some(s=>s.selectedOptions[0]?.textContent==='Layout B'));
+    await page.getByLabel('Escolher layout',{exact:true}).selectOption(id);
+    await page.getByRole('button',{name:'Editar estoque',exact:true}).click();
+    assert.equal(await page.getByLabel('Largura da área (m)',{exact:true}).inputValue(),'12');
+    assert.equal(await page.getByLabel('Comprimento da área (m)',{exact:true}).inputValue(),'8');
+    await page.getByRole('button',{name:'Atualizar lista de layouts',exact:true}).click();
+    assert.equal(await page.getByLabel('Escolher layout',{exact:true}).inputValue(),id);
+    await page.screenshot({path:'.npm-cache/storage-named-layout.png'});
+    assert.deepEqual(errors,[]);
+    console.log('Browser: named save, empty layout, selection, area, rotation, refresh and WebGL passed.');
+  } finally { await browser.close(); }
+})().catch(error=>{console.error(error);process.exitCode=1;});

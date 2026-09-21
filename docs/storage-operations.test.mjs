@@ -225,3 +225,54 @@ test("persistência remota impede sobrescrever edição concorrente", async () =
   );
   assert.ok(observed.some(([key, value]) => key === "revision" && value === 8));
 });
+
+
+test("named layouts scope reads and writes by company and layout id", async () => {
+  const empty = { version: 1, objects: [], items: [], area: { width: 12, depth: 8 } };
+  let row = { layout: empty, revision: 1 };
+  const calls = [];
+  const client = { from(table) {
+    assert.equal(table, "storage_named_layouts");
+    const filters = {};
+    let update;
+    return {
+      select() { return this; },
+      eq(key, value) { filters[key] = value; return this; },
+      async maybeSingle() { calls.push({ ...filters }); return { data: structuredClone(row) }; },
+      update(value) { update = value; return this; },
+      then(resolve) {
+        calls.push({ ...filters });
+        const matches = filters.revision === row.revision;
+        if (matches) row = structuredClone(update);
+        return Promise.resolve({ data: matches ? [{ revision: row.revision }] : [] }).then(resolve);
+      }
+    };
+  }};
+  const options = { companyId: "company-a", layoutId: "layout-a", demoMode: false, client };
+  const first = createLayoutRepository(options), second = createLayoutRepository(options);
+  await first.load();
+  await second.load();
+  await first.save({ ...empty, area: { width: 20, depth: 10 } });
+  await assert.rejects(second.save(empty), /Outra pessoa/);
+  assert.deepEqual((await createLayoutRepository(options).load()).area, { width: 20, depth: 10 });
+  assert.ok(calls.every(c => c.company_id === "company-a" && c.id === "layout-a"));
+});
+
+test("invalid warehouse area is rejected on import", () => {
+  for (const area of [{ width: 0, depth: 5 }, { width: Infinity, depth: 5 }, { width: 10, depth: 1001 }]) {
+    assert.throws(() => validateLayout({ version: 1, objects: [], items: [], area }), /área/);
+  }
+});
+
+test("rectangular grid stays within dimensions and includes boundaries", async () => {
+  const source = await readFile(new URL("../src/lib/storage-area.js", import.meta.url), "utf8");
+  const { areaGrid } = await import(moduleUrl(source));
+  const points = areaGrid({ width: 12.3, depth: 8.7 }, 0.25);
+  for (let i = 0; i < points.length; i += 3) {
+    assert.ok(Math.abs(points[i]) <= 6.15 + 1e-8);
+    assert.ok(Math.abs(points[i + 2]) <= 4.35 + 1e-8);
+  }
+  assert.ok(points.includes(6.15));
+  assert.ok(points.includes(4.35));
+  assert.ok(areaGrid({ width: 1000, depth: 1000 }, 0.01).length <= 12012);
+});

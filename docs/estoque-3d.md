@@ -61,3 +61,16 @@ Os testes de navegador usam Edge em modo headless, resolução 1024 × 768 e sup
 No catálogo de equipamentos, selecione **Porta-paletes**. O tamanho inicial é 3,9 × 2 × 1,2 m, com três paletes ilustrativos por módulo e nível. Cada 2 m completos de altura acrescentam um nível; cada 3,9 m completos de largura acrescentam um módulo. Assim, 8 m de altura e 7,8 m de largura mostram quatro níveis, dois módulos e 24 paletes. Há no mínimo um e no máximo 50 níveis/módulos por equipamento. Dimensões intermediárias distribuem os espaços pela estrutura. Os paletes são ilustrativos; associações de produtos continuam nas posições cadastradas. Não exige migração adicional.
 
 Teste: `node --test docs/storage-pallet-rack.test.mjs`.
+
+## Layouts nomeados, rotação e área do estoque
+
+Execute **supabase/storage-named-layouts.sql** no SQL Editor do Supabase, depois de **supabase/storage-layouts.sql**. A nova migração mantém o layout principal existente e adiciona layouts com nomes únicos por empresa, controle de revisão e as mesmas permissões de acesso. Publicar o código no GitHub não executa esta migração. Ela foi validada em PostgreSQL local isolado, mas não aplicada ao Supabase remoto nesta atualização.
+
+- Informe um nome e use **Salvar como novo layout** para guardar uma cópia da montagem atual, ou **Criar layout vazio** para começar outra montagem. Selecione uma montagem em **Escolher layout**; **Atualizar lista de layouts** busca as opções criadas por outras sessões sem descartar suas alterações.
+- Depois de selecionar um layout, as alterações continuam com salvamento automático e botão **Salvar layout**. Em contas conectadas, entre na mesma empresa para abrir os layouts em outros navegadores. Na demonstração, eles permanecem somente no navegador local.
+- Abaixo de **Girar 90°**, as setas **Esquerda** e **Direita** giram o objeto em torno do eixo vertical. O passo é ajustável de 1° a 180°, com padrão de 5°; desfazer/refazer continua disponível.
+- Em **Área do estoque**, defina largura e comprimento em metros (0,1 a 1000 m). Piso e grade seguem esse retângulo; as linhas ficam limitadas à área. **Ver área completa** enquadra o ambiente. O ajuste não move nem exclui equipamentos que já estejam fora da área. As medidas ficam salvas em cada layout e na exportação JSON.
+
+Validação desta atualização: 19 testes de modelo/persistência/geometria; teste da migração nomeada em PGlite (repetibilidade, nomes, isolamento entre empresas e revisão); teste no Edge em demonstração (salvar, escolher, criar vazio, recuperar área, girar e atualizar lista); build de produção.
+
+Comandos adicionais: `node docs/storage-named-database.test.cjs` e `node docs/storage-named-browser.test.cjs` (servidor em localhost:3117 ou variável STORAGE_TEST_URL).

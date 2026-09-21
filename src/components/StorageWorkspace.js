@@ -11,6 +11,8 @@ import dynamic from "next/dynamic";
 import { palletRackCapacity } from "@/lib/storage-pallet-rack";
 import { supabase } from "@/lib/supabase";
 import {
+  createNamedLayout,
+  listNamedLayouts,
   createLayoutRepository,
   createSaveQueue
 } from "@/lib/storage-persistence";
@@ -65,6 +67,18 @@ export default function StorageWorkspace({
     activeCompanyId || companies[0]?.id || ""
   );
   const [generation, setGeneration] = useState(0);
+  const [layoutId, setLayoutId] = useState("");
+  const [namedLayouts, setNamedLayouts] = useState([]);
+  const [catalogError, setCatalogError] = useState("");
+  const [catalogVersion, setCatalogVersion] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    setCatalogError("");
+    listNamedLayouts({ companyId, demoMode, client: supabase }).then(entries => {
+      if (alive) setNamedLayouts(entries);
+    }).catch(() => { if (alive) setCatalogError("Não foi possível listar os layouts. Verifique a conexão e a configuração de layouts nomeados no Supabase."); });
+    return () => { alive = false; };
+  }, [companyId, demoMode, generation, catalogVersion]);
   const leaveGuard = useRef(() => true),
     dialogRef = useRef();
   useEffect(() => {
@@ -124,7 +138,7 @@ export default function StorageWorkspace({
           className={`${input} !w-auto max-w-full`}
           value={companyId}
           onChange={(e) => {
-            if (leaveGuard.current()) setCompanyId(e.target.value);
+            if (leaveGuard.current()) { setCompanyId(e.target.value); setLayoutId(""); setNamedLayouts([]); }
           }}
         >
           {companies.map((c) => (
@@ -142,9 +156,22 @@ export default function StorageWorkspace({
           Fechar
         </button>
       </header>
+      <div className="space-y-2 border-b border-neutral-800 p-3">
+        <Field label="Escolher layout">
+          <select className={input} value={layoutId} onChange={e => { if (leaveGuard.current()) setLayoutId(e.target.value); }}>
+            <option value="">Layout principal</option>
+            {namedLayouts.map(entry => <option key={entry.id} value={entry.id}>{entry.name}</option>)}
+          </select>
+        </Field>
+        <button className={button} onClick={() => setCatalogVersion(v => v + 1)}>Atualizar lista de layouts</button>
+        {catalogError && <p role="alert" className="text-amber-300">{catalogError}</p>}
+        <p className="text-sm text-neutral-400">{demoMode ? "Demonstração: layouts ficam somente neste navegador." : "Layouts salvos ficam disponíveis ao entrar na mesma empresa em qualquer navegador."}</p>
+      </div>
       {companyId ? (
         <Workspace
-          key={`${companyId}:${generation}`}
+          key={`${companyId}:${layoutId}:${generation}`}
+          layoutId={layoutId || null}
+          onNamedLayout={entry => { setNamedLayouts(entries => [...entries, entry]); setLayoutId(entry.id); }}
           companyId={companyId}
           products={products.filter(
             (p) => p.company_id === companyId && p.active !== false
@@ -163,6 +190,8 @@ export default function StorageWorkspace({
   );
 }
 function Workspace({
+  layoutId,
+  onNamedLayout,
   companyId,
   products,
   demoMode,
@@ -196,9 +225,12 @@ function Workspace({
     focusTimers = useRef([]),
     mounted = useRef(true);
   const [saveError, setSaveError] = useState(false);
+  const [layoutName, setLayoutName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [rotationStep, setRotationStep] = useState(5);
   const repository = useMemo(
-    () => createLayoutRepository({ companyId, demoMode, client: supabase }),
-    [companyId, demoMode]
+    () => createLayoutRepository({ companyId, demoMode, client: supabase, layoutId }),
+    [companyId, demoMode, layoutId]
   );
   const saveQueue = useMemo(
     () =>
@@ -262,15 +294,24 @@ function Workspace({
     };
   }, [companyId, demoMode]);
   leaveGuard.current = () =>
-    !ready ||
+    !creating && (!ready ||
     saved.current === layout ||
     window.confirm(
       "Existem alterações ainda não salvas. Deseja sair mesmo assim?"
-    );
+    ));
   function save(value = layout) {
     setSaveError(false);
     setStatus("Salvando…");
     saveQueue.schedule(value);
+  }
+  async function saveNamed(blank = false) {
+    setCreating(true);
+    try {
+      const entry = await createNamedLayout({ companyId, demoMode, client: supabase }, layoutName, blank ? emptyLayout() : layout);
+      if (mounted.current) onNamedLayout(entry);
+    } catch (error) {
+      setStatus("Não foi possível salvar o layout nomeado: " + error.message);
+    } finally { setCreating(false); }
   }
   function exportLayout() {
     const blob = new Blob([JSON.stringify(layout, null, 2)], {
@@ -606,7 +647,7 @@ function Workspace({
     });
   }
   return (
-    <>
+    <fieldset disabled={creating} className="contents">
       <nav className="flex flex-wrap gap-2 border-b border-neutral-800 p-3">
         <button
           className={button}
@@ -651,6 +692,11 @@ function Workspace({
         </div>
       ) : (
         <>
+          <fieldset disabled={creating} className="flex flex-wrap items-end gap-2 border-b border-neutral-800 p-3">
+            <Field label="Nome do novo layout"><input className={input} maxLength={80} value={layoutName} onChange={e => setLayoutName(e.target.value)} placeholder="Ex.: Estoque principal" /></Field>
+            <button className={button} disabled={!layoutName.trim()} onClick={() => saveNamed()}>Salvar como novo layout</button>
+            <button className={button} disabled={!layoutName.trim()} onClick={() => saveNamed(true)}>Criar layout vazio</button>
+          </fieldset>
           {page === "space" ? (
             <section className="overflow-auto p-4">
               <h3 className="text-xl font-semibold">Onde posso guardar?</h3>
@@ -903,6 +949,19 @@ function Workspace({
                 </div>
                 {(editing || detailsOpen) && (
                   <aside className="w-full min-w-0 shrink-0 space-y-4 overflow-y-auto border-neutral-800 bg-neutral-900 p-4 md:h-full md:w-80 md:border-l">
+                    {editing && (
+                      <section className="space-y-2 border-b border-neutral-700 pb-4">
+                        <h3 className="font-semibold">Área do estoque</h3>
+                        <p className="text-xs text-neutral-400">A grade acompanha a largura e o comprimento, em metros.</p>
+                        {[['width', 'Largura da área (m)'], ['depth', 'Comprimento da área (m)']].map(([key, label]) => (
+                          <Field key={key} label={label}><input className={input} type="number" min="0.1" max="1000" step="0.1" value={(layout.area || { width: 40, depth: 40 })[key]} onChange={e => {
+                            const value = Number(e.target.value);
+                            if (value >= 0.1 && value <= 1000) commit({ ...layout, area: { width: 40, depth: 40, ...layout.area, [key]: value } });
+                          }} /></Field>
+                        ))}
+                        <button className={button} onClick={() => setFocus({ stamp: Date.now() })}>Ver área completa</button>
+                      </section>
+                    )}
                     {editing && selected && (
                       <section className="space-y-2 border-b border-neutral-700 pb-4">
                         <button className={`${button} w-full border-red-700 text-red-300`} onClick={removeSelected}>Apagar {selected.name}</button>
@@ -1150,6 +1209,14 @@ function Workspace({
                               >
                                 Girar 90°
                               </button>
+                              <div className="w-full space-y-2">
+                                <p className="text-sm text-neutral-300">Use as setas para girar o objeto selecionado para a esquerda ou direita.</p>
+                                <Field label="Passo do giro (graus)"><input className={input} type="number" min="1" max="180" value={rotationStep} onChange={e => setRotationStep(Math.max(1, Math.min(180, Number(e.target.value) || 1)))} /></Field>
+                                <div className="flex gap-2">
+                                  <button className={button} title="Girar objeto para a esquerda" aria-label="Girar objeto para a esquerda" onClick={() => patch(selectedId, { rotation: { ...selected.rotation, y: selected.rotation.y + rotationStep * Math.PI / 180 } })}>↶ Esquerda</button>
+                                  <button className={button} title="Girar objeto para a direita" aria-label="Girar objeto para a direita" onClick={() => patch(selectedId, { rotation: { ...selected.rotation, y: selected.rotation.y - rotationStep * Math.PI / 180 } })}>↷ Direita</button>
+                                </div>
+                              </div>
                               <button
                                 className={button}
                                 onClick={() =>
@@ -1327,6 +1394,6 @@ function Workspace({
           )}
         </>
       )}
-    </>
+    </fieldset>
   );
 }

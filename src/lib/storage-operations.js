@@ -33,6 +33,8 @@ export function validateLayout(layout) {
     !Array.isArray(layout.items)
   )
     throw new Error("O arquivo de estoque não é compatível.");
+  if (layout.area && !["width", "depth"].every(key => Number.isFinite(layout.area[key]) && layout.area[key] >= 0.1 && layout.area[key] <= 1000))
+    throw new Error("A área do estoque deve medir entre 0,1 e 1000 metros em cada direção.");
   const { byId } = indexLayout(layout);
   if (byId.size !== layout.objects.length)
     throw new Error("Existem objetos com identificadores repetidos.");
