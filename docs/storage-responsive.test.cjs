@@ -13,13 +13,20 @@ const assert = require('node:assert/strict');
  await page.waitForTimeout(1200);
  await page.getByRole('button',{name:'Editar estoque',exact:true}).click();
  await page.waitForTimeout(700);
- for(const width of [1303,1024,768,390]){
- await page.setViewportSize({width,height:578});await page.waitForTimeout(400);
+ for(const [width,height] of [[1920,1080],[1303,578],[1024,600],[768,1024],[844,390],[390,844],[320,568],[640,320]]){
+ await page.setViewportSize({width,height});await page.waitForTimeout(400);
  const control=page.getByLabel('Adicionar objeto',{exact:true});
  await control.scrollIntoViewIfNeeded();
  const bounds=await control.boundingBox();
  const sizes=await page.locator('[role=dialog]').evaluate(el=>({width:el.clientWidth,scroll:el.scrollWidth}));
- console.log(width,JSON.stringify({bounds,sizes}));
+ assert.ok(bounds.y>=0 && bounds.y+bounds.height<=height+1,'tools must be vertically reachable');
+ await control.selectOption('wall');
+ await control.selectOption('shelf');
+ const close=page.getByRole('button',{name:'Fechar',exact:true});
+ await close.scrollIntoViewIfNeeded();
+ const closeBounds=await close.boundingBox();
+ assert.ok(closeBounds.y>=0 && closeBounds.y+closeBounds.height<=height+1,'close must remain reachable');
+ console.log(width,height,JSON.stringify({bounds,sizes}));
  assert.ok(bounds.width >= 200, 'object selector must retain usable width');
  assert.ok(bounds.x>=0 && bounds.x+bounds.width<=width+1,'tools must fit viewport');
  assert.ok(sizes.scroll<=sizes.width+1,'dialog must not overflow horizontally');

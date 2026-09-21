@@ -33,9 +33,9 @@ const Scene = dynamic(() => import("./StorageScene"), {
   loading: () => <p className="p-6">Carregando ambiente 3D…</p>
 });
 const button =
-  "min-h-11 rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm disabled:opacity-40";
+  "min-h-11 max-w-full break-words rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm disabled:opacity-40";
 const input =
-  "min-h-11 w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2";
+  "min-h-11 min-w-0 w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2";
 const normalize = (value) =>
   String(value || "")
     .normalize("NFD")
@@ -44,7 +44,7 @@ const normalize = (value) =>
 function Field({ label, children }) {
   const id = useId();
   return (
-    <div className="block space-y-1 text-sm">
+    <div className="block min-w-0 space-y-1 break-words text-sm">
       <label htmlFor={id} className="block text-neutral-300">
         {label}
       </label>
@@ -111,7 +111,7 @@ export default function StorageWorkspace({
           }
         }
       }}
-      className="fixed inset-0 z-50 flex flex-col bg-neutral-950 text-neutral-100"
+      className="fixed inset-0 z-50 flex h-[100dvh] min-w-0 flex-col overflow-y-auto overscroll-contain bg-neutral-950 text-neutral-100 [&>*]:shrink-0"
       role="dialog"
       aria-modal="true"
       aria-label="Estoque e espaços disponíveis"
@@ -120,7 +120,7 @@ export default function StorageWorkspace({
         <h2 className="text-xl font-semibold">Estoque físico</h2>
         <select
           aria-label="Empresa do estoque"
-          className={`${input} !w-auto`}
+          className={`${input} !w-auto max-w-full`}
           value={companyId}
           onChange={(e) => {
             if (leaveGuard.current()) setCompanyId(e.target.value);
@@ -658,7 +658,7 @@ function Workspace({
                 as dimensões cadastradas; confirme o espaço livre no local antes
                 de guardar.
               </p>
-              <div className="grid max-w-xl grid-cols-3 gap-3">
+              <div className="grid max-w-xl grid-cols-1 gap-3 sm:grid-cols-3">
                 {["width", "height", "depth"].map((key, i) => (
                   <Field
                     key={key}
@@ -834,8 +834,8 @@ function Workspace({
                   </div>
                 )}
               </div>
-              <div className="relative min-h-0 flex-1 overflow-auto md:flex">
-                <div className="relative h-[55vh] min-h-[320px] min-w-0 flex-1 md:h-full">
+              <div className="relative min-h-0 flex-none md:flex md:h-[max(360px,60dvh)]">
+                <div className="relative h-[55dvh] min-h-[320px] min-w-0 flex-1 overflow-hidden md:h-full">
                   <Scene
                     layout={layout}
                     selectedId={selectedId}
@@ -901,7 +901,7 @@ function Workspace({
                   </div>
                 </div>
                 {(editing || detailsOpen) && (
-                  <aside className="w-full min-w-0 shrink-0 space-y-4 overflow-y-auto border-neutral-800 bg-neutral-900 p-4 md:w-80 md:border-l">
+                  <aside className="w-full min-w-0 shrink-0 space-y-4 overflow-y-auto border-neutral-800 bg-neutral-900 p-4 md:h-full md:w-80 md:border-l">
                     {editing && selected && (
                       <section className="space-y-2 border-b border-neutral-700 pb-4">
                         <button className={`${button} w-full border-red-700 text-red-300`} onClick={removeSelected}>Apagar {selected.name}</button>
