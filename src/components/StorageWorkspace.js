@@ -835,7 +835,7 @@ function Workspace({
                 )}
               </div>
               <div className="relative min-h-0 flex-1 overflow-auto md:flex">
-                <div className="relative h-[55vh] min-h-[320px] flex-1 md:h-full">
+                <div className="relative h-[55vh] min-h-[320px] min-w-0 flex-1 md:h-full">
                   <Scene
                     layout={layout}
                     selectedId={selectedId}
@@ -901,7 +901,7 @@ function Workspace({
                   </div>
                 </div>
                 {(editing || detailsOpen) && (
-                  <aside className="w-full space-y-4 overflow-y-auto border-neutral-800 bg-neutral-900 p-4 md:w-80 md:border-l">
+                  <aside className="w-full min-w-0 shrink-0 space-y-4 overflow-y-auto border-neutral-800 bg-neutral-900 p-4 md:w-80 md:border-l">
                     {editing && selected && (
                       <section className="space-y-2 border-b border-neutral-700 pb-4">
                         <button className={`${button} w-full border-red-700 text-red-300`} onClick={removeSelected}>Apagar {selected.name}</button>
