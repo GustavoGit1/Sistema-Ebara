@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { palletRackPieces } from "./storage-pallet-rack";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { indexLayout, snapPosition, footprint } from "./storage-operations";
 
@@ -187,7 +188,11 @@ export function createStorageScene(host, callbacks) {
         pieces.push(mesh);
         return mesh;
       };
-      if (["rack", "gondola", "cabinet"].includes(object.type)) {
+      if (object.type === "pallet_rack") {
+        for (const piece of palletRackPieces(object.dimensions)) {
+          box(piece.size, piece.position, piece.color).rotation.x = piece.rotation;
+        }
+      } else if (["rack", "gondola", "cabinet"].includes(object.type)) {
         for (const x of [-1, 1])
           for (const z of [-1, 1])
             box(

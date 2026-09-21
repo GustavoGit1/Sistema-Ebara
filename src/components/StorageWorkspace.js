@@ -8,6 +8,7 @@ import {
   useState
 } from "react";
 import dynamic from "next/dynamic";
+import { palletRackCapacity } from "@/lib/storage-pallet-rack";
 import { supabase } from "@/lib/supabase";
 import {
   createLayoutRepository,
@@ -1126,6 +1127,15 @@ function Workspace({
                                 />
                               </Field>
                             ))}
+                            {selected.type === "pallet_rack" && (
+                              <p className="text-sm text-neutral-300">
+                                {palletRackCapacity(selected.dimensions).levels} níveis ×{" "}
+                                {palletRackCapacity(selected.dimensions).bays} módulos × 3 paletes = {" "}
+                                {palletRackCapacity(selected.dimensions).pallets} paletes na visualização.
+                                Um nível a cada 2 m de altura e um módulo a cada 3,9 m de largura
+                                (mínimo 1 e máximo 50 em cada direção). Os paletes ilustram os espaços disponíveis.
+                              </p>
+                            )}
                             <div className="flex flex-wrap gap-2">
                               <button
                                 className={button}

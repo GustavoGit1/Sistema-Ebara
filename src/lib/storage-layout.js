@@ -1,6 +1,7 @@
 export const TYPES = {
   wall: "Parede",
   rack: "Estante",
+  pallet_rack: "Porta-paletes",
   gondola: "Gôndola",
   cabinet: "Armário",
   shelf: "Prateleira",
@@ -33,6 +34,7 @@ export function makeObject(type, parentId = null, index = 1) {
   const sizes = {
     wall: [4, 2.5, 0.15],
     rack: [2, 2.2, 0.6],
+    pallet_rack: [3.9, 2, 1.2],
     gondola: [2, 1.8, 1],
     cabinet: [1, 2, 0.5],
     shelf: [1.8, 0.35, 0.55],

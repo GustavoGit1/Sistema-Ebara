@@ -55,3 +55,9 @@ Inicie a aplicação com `npm.cmd run dev -- --port 3100` (ou use uma instância
 - `node docs/storage-database.test.cjs`: execução repetida da migração em PostgreSQL local, políticas dos perfis com funções de autorização de teste, isolamento entre empresas, revisão concorrente e rejeição de produto de outra empresa.
 
 Os testes de navegador usam Edge em modo headless, resolução 1024 × 768 e suporte a toque, em contextos de demonstração isolados. Não acessam produtos reais. A simulação não substitui testes em tablet físico e no Supabase do cliente.
+
+## Porta-paletes
+
+No catálogo de equipamentos, selecione **Porta-paletes**. O tamanho inicial é 3,9 × 2 × 1,2 m, com três paletes ilustrativos por módulo e nível. Cada 2 m completos de altura acrescentam um nível; cada 3,9 m completos de largura acrescentam um módulo. Assim, 8 m de altura e 7,8 m de largura mostram quatro níveis, dois módulos e 24 paletes. Há no mínimo um e no máximo 50 níveis/módulos por equipamento. Dimensões intermediárias distribuem os espaços pela estrutura. Os paletes são ilustrativos; associações de produtos continuam nas posições cadastradas. Não exige migração adicional.
+
+Teste: `node --test docs/storage-pallet-rack.test.mjs`.
