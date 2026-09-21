@@ -20,8 +20,8 @@ begin
 
   if product_record.active = false then
     raise exception 'Produto inativo nao pode ser vendido';
-  end if;
-
+  end if; 
+ 
   if product_record.company_id <> new.company_id then
     raise exception 'Produto nao pertence a empresa informada';
   end if;

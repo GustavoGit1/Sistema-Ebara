@@ -20,6 +20,8 @@ import {
   WalletCards
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import dynamic from "next/dynamic";
+const StorageWorkspace = dynamic(() => import("./StorageWorkspace"), { ssr: false });
 import {
   ROLE_OPTIONS,
   ROLES,
@@ -1362,6 +1364,8 @@ export default function StockApp() {
           {canManageCompanies(profile?.role) && <ActionCard icon={Building2} title="Nova empresa" onClick={() => setModal({ type: "company" })} />}
           {canCreateProduct(profile?.role) && <ActionCard icon={Package} title="Novo produto" onClick={() => setModal({ type: "product" })} />}
           {canViewCompanies(profile?.role) && <ActionCard icon={Store} title="Empresas cadastradas" onClick={() => setModal({ type: "companies" })} />}
+          <ActionCard icon={Package} title="Visualização e montagem 3D" onClick={() => setModal({ type: "storage3d" })} />
+          <ActionCard icon={Search} title="Sugestão de espaço" onClick={() => setModal({ type: "storageSpace" })} />
           <ActionCard icon={Eye} title="Produtos cadastrados" onClick={() => setModal({ type: "products" })} />
           <ActionCard icon={WalletCards} title="Compras pendentes" onClick={() => setModal({ type: "unpaidBalances" })} />
         </div>
@@ -1430,6 +1434,7 @@ export default function StockApp() {
         </div>
       </section>
 
+      {["storage3d", "storageSpace"].includes(modal?.type) && <StorageWorkspace companies={availableCompanies} products={products} activeCompanyId={activeCompanyId} demoMode={demoMode} initialPage={modal.type === "storageSpace" ? "space" : "map"} onClose={() => setModal(null)} />}
       <FloatingCalculator hidden={["user", "users"].includes(modal?.type)} />
 
       {modal?.type === "company" && <CompanyModal initial={modal.item} users={users.filter((item) => item.active !== false)} userCompanies={userCompanies} canManage={canManageCompanies(profile?.role)} saving={saving} onClose={() => setModal(null)} onSave={saveCompany} />}
